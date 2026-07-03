@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY data/ ./data/
-COPY fetch_effis.py alert_handler.py ./
+COPY alert_handler.py ./
 COPY entrypoint.sh .
 
 # Make entrypoint executable
