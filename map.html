@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Bosbrand-Gevarenkaart</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            color: #2c2c2c;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .header-info {
+            font-size: 13px;
+            color: #999;
+        }
+
+        #map {
+            flex: 1;
+            z-index: 1;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: white;
+            padding: 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            max-width: 280px;
+            z-index: 1000;
+            max-height: 60vh;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        .info-title {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+
+        .legend-group {
+            margin-bottom: 16px;
+        }
+
+        .legend-group-title {
+            font-weight: 500;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .fire-count {
+            background: #f0f0f0;
+            padding: 8px;
+            border-radius: 3px;
+            margin-top: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .update-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 12px;
+            border-top: 1px solid #e0e0e0;
+            padding-top: 8px;
+        }
+
+        .leaflet-popup-content {
+            font-size: 12px;
+        }
+
+        .leaflet-popup-content p {
+            margin: 4px 0;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px 30px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 2000;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #d32f2f;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .info-panel {
+                top: 80px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔥 Bosbrand-Gevarenkaart</h1>
+            <div class="header-info">Fréjus • Monaco • Italië — Live OpenStreetMap</div>
+        </header>
+
+        <div id="map"></div>
+
+        <div class="info-panel" id="infoPanel">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div>Kaart laden...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map (centered on Fréjus region)
+        const map = L.map('map').setView([44.0, 6.5], 9);
+
+        // OpenStreetMap layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19,
+            maxNativeZoom: 18
+        }).addTo(map);
+
+        // Fire layers
+        const fireMarkers = L.featureGroup();
+        const dangerZones = L.featureGroup();
+
+        fireMarkers.addTo(map);
+        dangerZones.addTo(map);
+
+        // State data
+        let fireData = null;
+
+        // Load fire data from state.json
+        async function loadFireData() {
+            try {
+                const response = await fetch('state.json');
+                fireData = await response.json();
+                updateMap();
+                updateInfoPanel();
+            } catch (error) {
+                console.error('Error loading fire data:', error);
+                document.getElementById('infoPanel').innerHTML = `
+                    <div class="info-title">❌ Fout</div>
+                    <p>Kan state.json niet laden.</p>
+                    <p style="margin-top: 8px; font-size: 11px; color: #999;">
+                        Zorg dat Docker draait: <code>docker-compose up</code>
+                    </p>
+                `;
+            }
+        }
+
+        function updateMap() {
+            if (!fireData) return;
+
+            // Clear existing markers
+            fireMarkers.clearLayers();
+            dangerZones.clearLayers();
+
+            // Add danger zones as circles
+            fireData.fire_danger_zones.forEach(zone => {
+                const radius = zone.level === 'very_high' ? 40000 : 30000;
+                const color = zone.level === 'very_high' ? '#D32F2F' : '#F57C00';
+
+                L.circle([zone.lat, zone.lon], {
+                    radius: radius,
+                    color: color,
+                    weight: 2,
+                    opacity: 0.3,
+                    fillColor: color,
+                    fillOpacity: 0.1,
+                    dashArray: '5, 5'
+                }).bindPopup(`
+                    <b>Brandgevaar-zone</b><br>
+                    Niveau: ${zone.level === 'very_high' ? 'ZEER HOOG' : 'HOOG'}<br>
+                    Locatie: ${zone.lat.toFixed(2)}°, ${zone.lon.toFixed(2)}°
+                `).addTo(dangerZones);
+            });
+
+            // Add active fires as markers
+            fireData.hotspots.forEach((fire, idx) => {
+                const color = fire.area_hectares > 150 ? '#D32F2F' : '#F57C00';
+
+                L.circleMarker([fire.lat, fire.lon], {
+                    radius: fire.area_hectares > 150 ? 8 : 6,
+                    fillColor: color,
+                    color: 'white',
+                    weight: 2,
+                    opacity: 0.95,
+                    fillOpacity: 0.9
+                }).bindPopup(`
+                    <b>${fire.name}</b><br>
+                    Grootte: ${fire.area_hectares} ha<br>
+                    Betrouwbaarheid: ${fire.confidence}<br>
+                    Gedetecteerd: ${new Date(fire.date_detected).toLocaleString('nl-NL')}
+                `).addTo(fireMarkers);
+            });
+
+            // Auto-fit map to all markers
+            if (fireMarkers.getLayers().length > 0) {
+                map.fitBounds(fireMarkers.getBounds().pad(0.1));
+            }
+        }
+
+        function updateInfoPanel() {
+            if (!fireData) return;
+
+            const hotspots = fireData.hotspots || [];
+            const zones = fireData.fire_danger_zones || [];
+
+            const veryHighZones = zones.filter(z => z.level === 'very_high').length;
+            const highZones = zones.filter(z => z.level === 'high').length;
+
+            const timestamp = new Date(fireData.timestamp);
+            const timeStr = timestamp.toLocaleString('nl-NL');
+
+            const html = `
+                <div class="info-title">🔥 Brandmarkers</div>
+
+                <div class="legend-group">
+                    <div class="legend-group-title">Actieve Branden</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #D32F2F;"></div>
+                        <div>Zeer hoog risico (>150 ha)</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #F57C00;"></div>
+                        <div>Hoog risico (30–150 ha)</div>
+                    </div>
+                </div>
+
+                <div class="legend-group">
+                    <div class="legend-group-title">Gevaar-zones</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #D32F2F; opacity: 0.3;"></div>
+                        <div>Zeer hoog brandgevaar (${veryHighZones})</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #F57C00; opacity: 0.3;"></div>
+                        <div>Hoog brandgevaar (${highZones})</div>
+                    </div>
+                </div>
+
+                <div class="fire-count">
+                    📍 ${hotspots.length} actieve branden
+                    <br>
+                    ⚠️ ${zones.length} gevarenzones
+                </div>
+
+                <div class="update-time">
+                    <strong>Bijgewerkt:</strong><br>
+                    ${timeStr} UTC<br><br>
+                    <strong>Bron:</strong> EFFIS/GWIS<br>
+                    <strong>Update interval:</strong> ~1 uur
+                </div>
+            `;
+
+            document.getElementById('infoPanel').innerHTML = html;
+        }
+
+        // Auto-refresh every 5 minutes
+        setInterval(loadFireData, 5 * 60 * 1000);
+
+        // Initial load
+        loadFireData();
+    </script>
+</body>
+</html>
