@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: france-fire-alert
+    container_name: kwiekie-frankrijk
     restart: unless-stopped
 
     # Volume mounts for persistent data
@@ -36,7 +36,7 @@ services:
   # Optional: simple web server to view state.json
   web:
     image: python:3.11-slim
-    container_name: france-fire-web
+    container_name: kwiekie-frankrijk-web
     working_dir: /data
     volumes:
       - ./data:/data
