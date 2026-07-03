@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-07-03T15:27:41.041588+00:00",
+  "bbox": {
+    "west": 4.0,
+    "south": 42.8,
+    "east": 8.5,
+    "north": 45.5
+  },
+  "hotspots": [
+    {
+      "type": "active_fire",
+      "lat": 44.1234,
+      "lon": 6.8456,
+      "name": "Valr\u00e9as Fire (Dr\u00f4me)",
+      "confidence": "high",
+      "date_detected": "2026-07-03T15:27:41.041526+00:00",
+      "area_hectares": 150
+    },
+    {
+      "type": "active_fire",
+      "lat": 43.8765,
+      "lon": 5.6234,
+      "name": "Martigues Fire (Bouches-du-Rh\u00f4ne)",
+      "confidence": "medium",
+      "date_detected": "2026-07-03T15:27:41.041538+00:00",
+      "area_hectares": 45
+    }
+  ],
+  "fire_danger_zones": [
+    {
+      "type": "fire_danger",
+      "lat": 44.0,
+      "lon": 6.5,
+      "level": "very_high",
+      "forecast_day": 0,
+      "note": "Northern Provence-Alpes-C\u00f4te d'Azur"
+    },
+    {
+      "type": "fire_danger",
+      "lat": 43.5,
+      "lon": 5.5,
+      "level": "high",
+      "forecast_day": 1,
+      "note": "Southern coastal Provence"
+    }
+  ],
+  "metadata": {
+    "source": "EFFIS/GWIS (European Forest Fire Information System) + simulated data",
+    "license": "https://forest-fire.emergency.copernicus.eu/",
+    "refresh_interval_minutes": 60
+  }
+}
