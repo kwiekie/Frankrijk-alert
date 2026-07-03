@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  fire-alert:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: france-fire-alert
+    restart: unless-stopped
+
+    # Volume mounts for persistent data
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+    # Environment variables (optional - for future config)
+    environment:
+      - TZ=UTC
+      - LOG_DIR=/app/logs
+
+    # Health check (optional)
+    healthcheck:
+      test: [ "CMD", "test", "-f", "/app/data/state.json" ]
+      interval: 3600s
+      timeout: 10s
+      retries: 1
+      start_period: 60s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: simple web server to view state.json
+  web:
+    image: python:3.11-slim
+    container_name: france-fire-web
+    working_dir: /data
+    volumes:
+      - ./data:/data
+      - ./:/app
+    ports:
+      - "8080:8000"
+    command: python3 -m http.server 8000
+    restart: unless-stopped
